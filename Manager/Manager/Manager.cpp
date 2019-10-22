@@ -17,6 +17,7 @@ bool type = true;//false - esc; true - periodic prompt
 SOCKET sockets[N];
 std::vector<PROCESS_INFORMATION> processInfo;
 int values[N] = {};
+bool wasCalculated[N] = {};
 std::future<void> futures[N];
 
 bool exitByEsc = false;
@@ -73,7 +74,9 @@ void createSocket() {
 void wait(int index) {
 	char* ch = new char[_SIZE];
 	ZeroMemory(ch, _SIZE);
-	recv(sockets[index], ch, sizeof(ch), NULL);
+	if (recv(sockets[index], ch, sizeof(ch), NULL) != SOCKET_ERROR) {
+		wasCalculated[index] = true;
+	}
 	values[index]=atoi(ch);
 	delete[] ch;
 }
@@ -91,7 +94,7 @@ void action(int c);
 void writeMenu() {
 	isInMenu = true;
 	std::cout << "Options:\n"
-		<< " a) continue\n b) continue without prompt \n c) cancel \n";
+		<< " a) continue\n b) continue without prompt\n c) cancel\n";
 	int c;
 	do {
 		c = getche();
@@ -109,14 +112,17 @@ void waitForNextCall() {
 void closeAllFunctions(){
 	//close all functions no calculated
 	for (int i = 0; i < N; i++)
-		if (futures[i].wait_for(std::chrono::milliseconds(NULL)) == std::future_status::timeout) {
+		if (!wasCalculated[i]) {
 			TerminateProcess(processInfo[i].hProcess, 0);
 		}
 }
 
 
 int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
-	if (isInMenu) return 1;
+	if (isInMenu) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(1)); 
+		return 1;
+	}
 	int answer = 1;
 	bool isCalculatedL = true;
 	for (int i = 0; i < N; i++) {
@@ -155,8 +161,8 @@ int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
 
 void writeWhyIsNotAnswer() {
 	std::cout << "Is not answer becouse "
-		<< (futures[0].wait_for(std::chrono::microseconds(NULL)) == std::future_status::timeout ? "f " : "")
-		<< (futures[1].wait_for(std::chrono::microseconds(NULL)) == std::future_status::timeout ? "g " : "")
+		<< (wasCalculated[0] ? "" : "f ")
+		<< (wasCalculated[1] ? "" : "g ")
 		<< "is not calculated \n";
 }
 
@@ -188,9 +194,10 @@ void action(int c) {
 void isEsc() {
 	while (!isCalculated) {
 		int z = getch();
+		if (isCalculated) return;
 		if (z == 27) {
-			exitByEsc = true;
 			isCalculated = true;
+			exitByEsc = true;
 			writeWhyIsNotAnswer();
 		}
 	}
@@ -213,6 +220,9 @@ void restart() {
 	exitByEsc = false;
 	isInMenu = false;
 	isCalculated = false;
+	for (int i=0;i<N;i++) 
+		wasCalculated[i] = false;
+	
 }
 
 
