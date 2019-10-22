@@ -58,8 +58,11 @@ void createSocket() {
 		si.cb = sizeof(si);
 		ZeroMemory(&pi, sizeof(pi));
 
-		CreateProcess(NULL, _tcsdup(TEXT("\"..\\..\\Functions\\Debug\\Functions\" - L - S")), 
-			NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+		if (!CreateProcess(NULL, _tcsdup(TEXT("\"..\\..\\Functions\\Debug\\Functions\" ")),
+			NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+			std::cout << "error create process";
+			exit(1);
+		}
 		processInfo.push_back(pi);
 		socket = accept(sListen, (SOCKADDR*)&addr, &sizeofaddr);
 		
@@ -117,7 +120,7 @@ int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
 	int answer = 1;
 	bool isCalculatedL = true;
 	for (int i = 0; i < N; i++) {
-		if ((futures[i].wait_for(std::chrono::milliseconds(NULL)) == std::future_status::ready) && !exitByEsc && !isInMenu) {
+		if ((futures[i].wait_for(std::chrono::milliseconds(1)) == std::future_status::ready) && !exitByEsc && !isInMenu) {
 			if (values[i] == 0) {
 				isCalculatedL = true;
 				answer = 0;
