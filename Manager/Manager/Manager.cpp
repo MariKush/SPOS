@@ -12,7 +12,7 @@
 const int N = 2;
 const int _SIZE = 20;
 
-bool type = true;//false - esc; true - periodic prompt
+bool type = false;//false - esc; true - periodic prompt
 
 SOCKET sockets[N];
 std::vector<PROCESS_INFORMATION> processInfo;
@@ -21,10 +21,12 @@ bool wasCalculated[N] = {};
 std::future<void> futures[N];
 
 bool exitByEsc = false;
-bool isInMenu = false;
 bool isCalculated;
 
 std::future<void> f;
+std::chrono::high_resolution_clock::time_point start;
+bool isWaiting=false;
+
 
 void createSocket() {
 	//downloading the library
@@ -92,7 +94,6 @@ void closeSocket() {
 void action(int c);
 
 void writeMenu() {
-	isInMenu = true;
 	std::cout << "Options:\n"
 		<< " a) continue\n b) continue without prompt\n c) cancel\n";
 	int c;
@@ -103,11 +104,15 @@ void writeMenu() {
 	} while (c < 'a' || c >'c');
 }
 
-void waitForNextCall() {
-	std::this_thread::sleep_for(std::chrono::seconds(2));
-	if (!isCalculated)
-		writeMenu();
+void startWaiting() {
+	if (isWaiting) {
+		std::cout << "error is waiting\n";
+		exit(-2);
+	}
+	isWaiting = true;
+	start = std::chrono::high_resolution_clock::now();
 }
+
 
 void closeAllFunctions(){
 	//close all functions no calculated
@@ -118,21 +123,17 @@ void closeAllFunctions(){
 }
 
 
-int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
-	if (isInMenu) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(1)); 
-		return 1;
-	}
+int getAnswer(bool& isCalculated) {
+
 	int answer = 1;
 	bool isCalculatedL = true;
 	for (int i = 0; i < N; i++) {
-		if ((futures[i].wait_for(std::chrono::milliseconds(1)) == std::future_status::ready) && !exitByEsc && !isInMenu) {
+		if ((futures[i].wait_for(std::chrono::milliseconds(1)) == std::future_status::ready) && !exitByEsc) {
 			if (values[i] == 0) {
 				isCalculatedL = true;
 				answer = 0;
 				
-				if (!isExitByC)
-					std::cout << "answer: 0 " << (i == 0 ? "f" : "g") << " is zero;\n";
+				std::cout << "answer: 0 " << (i == 0 ? "f" : "g") << " is zero;\n";
 				break;
 			}
 		}
@@ -141,7 +142,7 @@ int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
 		}
 	}
 
-	if (isCalculatedL && !exitByEsc && !isInMenu) {
+	if (isCalculatedL && !exitByEsc ) {
 		if (answer == 0) {}
 		else {
 			answer = abs(values[0]);
@@ -150,8 +151,7 @@ int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
 				if (answer > abs(values[i]))
 					answer = abs(values[i]);
 			
-			if (!isExitByC)
-				std::cout << "answer: " << answer << ";\n";
+			std::cout << "answer: " << answer << ";\n";
 		}
 	}
 	if (isCalculatedL)
@@ -160,7 +160,7 @@ int getAnswer(bool& isCalculated, bool isInMenu, bool isExitByC) {
 }
 
 void writeWhyIsNotAnswer() {
-	std::cout << "Is not answer becouse "
+	std::cout << "Computation could not be completed, because function "
 		<< (wasCalculated[0] ? "" : "f ")
 		<< (wasCalculated[1] ? "" : "g ")
 		<< "is not calculated \n";
@@ -170,19 +170,13 @@ void writeWhyIsNotAnswer() {
 void action(int c) {
 
 	if (c == 'a') {
-		bool isCalculatedL = false;
-		int answer = getAnswer(isCalculatedL, false, true);
-		if (!isCalculatedL)
-			f = std::async(waitForNextCall);
-	}
-	if (c == 'a'|| c == 'b') {
-		isInMenu = false;
+		startWaiting();
 	}
 	else if (c == 'c') {
 		bool isCalculatedL = false;
-		int answer = getAnswer(isCalculatedL, false, true);
+		int answer = getAnswer(isCalculatedL);
 		if (isCalculatedL)
-			std::cout << "STOOOOP. Answer is calculated! Answer is " << answer << std::endl;
+			{}
 		else {
 			writeWhyIsNotAnswer();
 		}
@@ -208,7 +202,16 @@ void isEsc() {
 void checkAnswer() {
 	isCalculated = false;
 	while (!isCalculated) {
-		getAnswer(isCalculated, isInMenu, false);
+		getAnswer(isCalculated);
+		
+		if (isWaiting)
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::high_resolution_clock::now() - start).count() > 2e3) 
+				if (!isCalculated) {
+					isWaiting = false;
+					writeMenu();
+				}
+		
 	}
 	closeAllFunctions();
 	closeSocket();
@@ -216,30 +219,31 @@ void checkAnswer() {
 
 
 void restart() {
-	processInfo.clear();	
+	processInfo.clear();
+	isWaiting = false;	
 	exitByEsc = false;
-	isInMenu = false;
 	isCalculated = false;
-	for (int i=0;i<N;i++) 
-		wasCalculated[i] = false;
-	
+	for (int i=0; i<N; i++) 
+		wasCalculated[i] = false;	
 }
 
 
 
 int main(int argc, char* argv[]) 
 {
-	for (int i = 0; i < 10; i++) {
+	while(true){
 		
 		int x;
 		std::cout << "x = ";
 		std::cin >> x;
+		if (x < 0) exit(x);
 		std::cin.clear();
 		std::cin.ignore(10000, '\n');
 		char* c = new char[_SIZE];
 		ZeroMemory(c, _SIZE);
 		
 		createSocket();
+
 		for (SOCKET socket : sockets)
 			if (socket == 0) {
 				std::cout << "Error #1\n" << socket;
@@ -262,20 +266,22 @@ int main(int argc, char* argv[])
 		}
 
 		if (type)
-			f = std::async(&waitForNextCall);
+			startWaiting();
 		else
 			f = std::async(&isEsc);
 
 		checkAnswer();
 
-		if (!type && exitByEsc) {
+		//if Esc already
+		if (type || exitByEsc) {
 			system("pause");
 		}
 		else {
 			std::cout << "press any key to continue... \n";
 		}
 
-		f.wait();
+		if (!type) 
+			f.wait();
 		restart();
 
 	}
