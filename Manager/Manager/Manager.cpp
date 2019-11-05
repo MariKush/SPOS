@@ -12,7 +12,7 @@
 const int N = 2;
 const int _SIZE = 20;
 
-bool type = false;//false - esc; true - periodic prompt
+bool type = true;//false - esc; true - periodic prompt
 
 SOCKET sockets[N];
 std::vector<PROCESS_INFORMATION> processInfo;
@@ -78,8 +78,8 @@ void wait(int index) {
 	ZeroMemory(ch, _SIZE);
 	if (recv(sockets[index], ch, sizeof(ch), NULL) != SOCKET_ERROR) {
 		wasCalculated[index] = true;
+		values[index] = atoi(ch);
 	}
-	values[index]=atoi(ch);
 	delete[] ch;
 }
 
@@ -123,18 +123,14 @@ void closeAllFunctions(){
 }
 
 
-int getAnswer(bool& isCalculated) {
-
-	int answer = 1;
+void getAnswer() {
 	bool isCalculatedL = true;
 	for (int i = 0; i < N; i++) {
 		if ((futures[i].wait_for(std::chrono::milliseconds(1)) == std::future_status::ready) && !exitByEsc) {
 			if (values[i] == 0) {
-				isCalculatedL = true;
-				answer = 0;
-				
-				std::cout << "answer: 0 " << (i == 0 ? "f" : "g") << " is zero;\n";
-				break;
+				isCalculated = true;	
+				std::cout << "answer: 0\n";
+				return;
 			}
 		}
 		else {
@@ -142,21 +138,18 @@ int getAnswer(bool& isCalculated) {
 		}
 	}
 
-	if (isCalculatedL && !exitByEsc ) {
-		if (answer == 0) {}
-		else {
-			answer = abs(values[0]);
+	if (!isCalculatedL) return;
 
-			for (int i = 1; i < N; i++)
-				if (answer > abs(values[i]))
-					answer = abs(values[i]);
-			
-			std::cout << "answer: " << answer << ";\n";
-		}
+	if (!exitByEsc ) {
+		int answer = abs(values[0]);
+
+		for (int i = 1; i < N; i++)
+			if (answer > abs(values[i]))
+				answer = abs(values[i]);
+		
+		std::cout << "answer: " << answer << ";\n";
 	}
-	if (isCalculatedL)
-		isCalculated = isCalculatedL;
-	return answer;
+	isCalculated = true;
 }
 
 void writeWhyIsNotAnswer() {
@@ -173,11 +166,8 @@ void action(int c) {
 		startWaiting();
 	}
 	else if (c == 'c') {
-		bool isCalculatedL = false;
-		int answer = getAnswer(isCalculatedL);
-		if (isCalculatedL)
-			{}
-		else {
+		getAnswer();
+		if (!isCalculated){
 			writeWhyIsNotAnswer();
 		}
 		isCalculated = true;
@@ -202,7 +192,7 @@ void isEsc() {
 void checkAnswer() {
 	isCalculated = false;
 	while (!isCalculated) {
-		getAnswer(isCalculated);
+		getAnswer();
 		
 		if (isWaiting)
 			if (std::chrono::duration_cast<std::chrono::milliseconds>(
