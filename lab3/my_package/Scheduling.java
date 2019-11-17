@@ -32,8 +32,8 @@ public class Scheduling {
     double X = 0.0;
 
     try {   
-      //BufferedReader in = new BufferedReader(new FileReader(f));
-      DataInputStream in = new DataInputStream(new FileInputStream(f));
+      BufferedReader in = new BufferedReader(new FileReader(f));
+      //DataInputStream in = new DataInputStream(new FileInputStream(f));
       while ((line = in.readLine()) != null) {
         if (line.startsWith("numprocess")) {
           StringTokenizer st = new StringTokenizer(line);
@@ -80,7 +80,7 @@ public class Scheduling {
     System.out.println("standdev " + standardDev);
     int size = processVector.size();
     for (i = 0; i < size; i++) {
-      sProcess process = (sProcess) processVector.elementAt(i);
+      sProcess process =  processVector.elementAt(i);
       System.out.println("process " + i + " " + process.cputime + " " + process.ioblocking + " " + process.cpudone + " " + process.numblocked);
     }
     System.out.println("runtime " + runtime);
@@ -128,7 +128,7 @@ public class Scheduling {
       out.println("Standard Deviation: " + standardDev);
       out.println("Process #\tCPU Time\tIO Blocking\tCPU Completed\tCPU Blocked");
       for (i = 0; i < processVector.size(); i++) {
-        sProcess process = (sProcess) processVector.elementAt(i);
+        sProcess process = processVector.elementAt(i);
         out.print(Integer.toString(i));
         if (i < 100) { out.print("\t\t"); } else { out.print("\t"); }
         out.print(Integer.toString(process.cputime));
