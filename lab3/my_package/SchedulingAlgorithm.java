@@ -29,12 +29,26 @@ public class SchedulingAlgorithm {
     if (process.size() == 0) process.addElement(blocked);
 
     size = process.size();
-    int countTicket = 10*size;
-    int []ticket = new int[countTicket];
-    for(int i = 0; i < countTicket; i++){
-      ticket[i] = process.elementAt(i%size);
+    int countTicket = 0;
+    for (int i = 0; i < size; i++){
+      countTicket += processVector.elementAt(process.elementAt(i)).countTicket;
     }
-    return ticket[random.nextInt(countTicket)];
+    int N = 10;
+    int []ticket = new int[countTicket*N];
+    int currIndex;
+    for(int i = 0; i < N; i++){
+      currIndex = 0;
+      for(int j = 0; j < size; j++){
+
+        for(int k = 0; k < processVector.elementAt(process.elementAt(j)).countTicket; k++){
+          ticket[countTicket*i + currIndex] = process.elementAt(j);
+          currIndex++;
+        }
+
+      }
+      
+    }
+    return ticket[random.nextInt(countTicket*N)];
 
   }
 
