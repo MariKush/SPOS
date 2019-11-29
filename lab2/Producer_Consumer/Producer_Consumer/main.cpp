@@ -6,7 +6,7 @@
 
 #define N 5 /* количество мест для записей в буфере */
 ThreadSafeQueue<int> buffer;
-std::queue<int> check;
+std::vector<int> check;
 
 
 volatile bool isSleeping=false;
@@ -27,7 +27,7 @@ int remove_item() {
 }
 
 void consume_item(int item) {
-	check.push(item);
+	check.push_back(item);
 	//std::cout << item << " ";
 }
 
@@ -48,8 +48,9 @@ void producer()
 	int item;
 	while (true) { // бесконечное повторение 
 		std::this_thread::yield();
+		//std::this_thread::yield();
 		item = produce_item(); // генерация новой записи 
-		if (buffer.size() == N) sleep(); // если буфер полон, заблокироваться 
+		if (buffer.size() >= N) sleep(); // если буфер полон, заблокироваться 
 		insert_item(item); // помещение записи в буфер 
 		if (buffer.size() == 1) wakeup(); // был ли буфер пуст? 
 	}
@@ -67,27 +68,29 @@ void consumer()
 
 void test2() {
 	if (check.empty())return;
-	int size =check.back()+1;
+	
+	auto it = std::max_element(std::begin(check), std::end(check));
+	int size = *it+1;
 	bool* arr = new bool[size] {};
 	
-	while (!check.empty()) {
-
-		if (check.front() > 0 && check.front() < size) {
-			if (arr[check.front()]) {
-				std::cout << "twice " << check.front() << '\n';
+	for (auto var : check)
+	{
+		if (var > 0 && var < size) {
+			if (arr[var]) {
+				std::cout << "twice " << var << '\n';
 			}
-			arr[check.front()] = true;
+			arr[var] = true;
 		}
 		else {
-			std::cout << "lose item, because found " << check.front() << '\n';
+			std::cout << "lose item, because found " << var << '\n';
 		}
-
-		check.pop();
 	}
+
 	for (int i = 1; i < size; i++){
 		if (!arr[i])
 			std::cout << i << " not found\n";
 	}
+	delete[]arr;
 	std::cout << "end check lose item\n";
 }
 
@@ -104,21 +107,21 @@ void test() {
 	test2();
 }
 
-int main() {
+void restart() {
+	isSleeping = false;
+	currentValue = 0;
+	check.clear();
+	buffer.clear();
+}
 
+int main() {
 	std::thread producerThread(producer);
 	std::thread consumerThread(consumer);
+	std::thread producerThread2(producer);
 
 	std::thread testThread(test);
 
-	std::thread producerThread2(producer);
-	//std::thread consumerThread2(consumer);
-
-	producerThread.join();
-	consumerThread.join();
-
-
-	//producerThread2.join();
-	//consumerThread2.join();
-
+	testThread.join();
+	
+	exit(0);
 }

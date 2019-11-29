@@ -34,6 +34,14 @@ public:
 		cond_.notify_one();
 	}
 
+	void clear() {
+		std::unique_lock<std::mutex> mlock(mutex_);
+		while (!queue_.empty())
+			queue_.pop();
+		mlock.unlock();
+		cond_.notify_one();
+	}
+
 private:
 	std::queue<T> queue_;
 	std::mutex mutex_;
