@@ -6,7 +6,7 @@
 
 #define N 5 /* количество мест для записей в буфере */
 ThreadSafeQueue<int> buffer;
-std::vector<int> check;
+ThreadSafeQueue<int> check;
 
 
 volatile bool isSleeping=false;
@@ -27,7 +27,7 @@ int remove_item() {
 }
 
 void consume_item(int item) {
-	check.push_back(item);
+	check.push(item);
 	//std::cout << item << " ";
 }
 
@@ -55,6 +55,7 @@ void producer()
 		if (buffer.size() == 1) wakeup(); // был ли буфер пуст? 
 	}
 }
+
 void consumer()
 {
 	int item;
@@ -66,45 +67,55 @@ void consumer()
 	}
 }
 
-void test2() {
-	if (check.empty())return;
-	
-	auto it = std::max_element(std::begin(check), std::end(check));
-	int size = *it+1;
-	bool* arr = new bool[size] {};
-	
-	for (auto var : check)
-	{
-		if (var > 0 && var < size) {
-			if (arr[var]) {
-				std::cout << "twice " << var << '\n';
+bool checkDeadLock() {
+	int previos;
+	std::cout << "current item " << currentValue << std::endl;
+	previos = currentValue;
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	if (previos == currentValue) {
+		std::cout << "deadLock\n";
+		return true;
+	}
+	return false;
+}
+
+bool checkLoseItem() {
+	int previousItem = 0, lostItem = -1;
+	bool wasLoss = false;
+	while (!check.empty()) {
+		int item = check.pop();
+		if (item == previousItem) {//doubling neighbor
+			std::cout << "double item " << item << std::endl;
+			return true;
+		}
+		else if (item == previousItem + 1) {//all is okay		
+			previousItem = item;
+		}
+		else if (item == previousItem + 2) {
+			if (wasLoss) {
+				std::cout << "lose item " << lostItem << std::endl;
+				return true;
 			}
-			arr[var] = true;
+			wasLoss = true;
+			lostItem = previousItem + 1;
+			previousItem = item;
+
+		}
+		else if (item == lostItem && wasLoss) { //item found
+			wasLoss = false;
 		}
 		else {
-			std::cout << "lose item, because found " << var << '\n';
+			std::cout << "repetition item does not close";
+			return true;
 		}
 	}
-
-	for (int i = 1; i < size; i++){
-		if (!arr[i])
-			std::cout << i << " not found\n";
-	}
-	delete[]arr;
-	std::cout << "end check lose item\n";
+	return false;
 }
 
 void test() {
-	int previos;
-
 	do {
-		std::cout << "current item " << currentValue << std::endl;
-		previos = currentValue;
-		std::this_thread::sleep_for(std::chrono::seconds(1));
 
-	} while (previos != currentValue);
-	std::cout << "deadLock\n";
-	test2();
+	} while (!checkDeadLock() && !checkLoseItem());
 }
 
 void restart() {
@@ -119,9 +130,7 @@ int main() {
 	std::thread consumerThread(consumer);
 	std::thread producerThread2(producer);
 
-	std::thread testThread(test);
-
-	testThread.join();
+	test();
 	
 	exit(0);
 }

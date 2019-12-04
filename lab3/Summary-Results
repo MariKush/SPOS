@@ -1,9 +1,9 @@
-Scheduling Type: Batch (Nonpreemptive)
+Scheduling Type: Non-preemptive
 Scheduling Name: Lottery
-Simulation Run Time: 4293
+Simulation Run Time: 4593
 Mean: 1100
 Standard Deviation: 510
 Process #	CPU Time	IO Blocking	CPU Completed	CPU Blocked
-0		1431 (ms)	100 (ms)	1431 (ms)	14 times
-1		1431 (ms)	100 (ms)	1431 (ms)	14 times
-2		1431 (ms)	100 (ms)	1431 (ms)	14 times
+0		1531 (ms)	100 (ms)	1531 (ms)	15 times
+1		1531 (ms)	100 (ms)	1531 (ms)	15 times
+2		1531 (ms)	100 (ms)	1531 (ms)	15 times

@@ -60,7 +60,7 @@ public class SchedulingAlgorithm {
     int completed = 0;
     String resultsFile = "Summary-Processes";
 
-    result.schedulingType = "Batch (Nonpreemptive)";
+    result.schedulingType = "Non-preemptive";
     result.schedulingName = "Lottery"; 
     try {
       //BufferedWriter out = new BufferedWriter(new FileWriter(resultsFile));

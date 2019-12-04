@@ -25,6 +25,10 @@ public:
 	int size() {
 		return queue_.size();
 	}
+
+	bool empty() {
+		return queue_.empty();
+	}
 	
 	void push(const T& item)
 	{

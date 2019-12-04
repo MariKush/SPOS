@@ -29,7 +29,7 @@ public class Scheduling {
     String tmp;
     int cputime = 0;
     int ioblocking = 0; 
-    int countTicket=1;
+    int countTicket = 1;
     double X = 0.0;
 
     try {   
