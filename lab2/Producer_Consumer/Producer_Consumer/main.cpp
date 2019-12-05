@@ -16,6 +16,9 @@ std::mutex m;
 std::condition_variable cv;
 
 int currentValue = 0;
+int countItem = 0;
+int errors = 0;
+int preErrors = 0;
 
 int produce_item() {
 	currentValue++;
@@ -23,11 +26,13 @@ int produce_item() {
 }
 
 void insert_item(int item) {
+	countItem++;
 	buffer.push(item);
 }
 
 int remove_item() {
-	 return buffer.pop();
+	countItem--;
+	return buffer.pop();
 }
 
 void consume_item(int item) {
@@ -44,13 +49,20 @@ void wakeup() {
 	cv.notify_all();
 }
 
+void checkNotEqual() {
+	if (abs( buffer.size() - countItem)>1) {
+		errors++;
+		countItem = buffer.size();
+	}
+}
+
 
 void producer()
 {
 	int item;
 	while (true) { // бесконечное повторение 
+		checkNotEqual();
 		std::this_thread::yield();
-		//std::this_thread::yield();
 		item = produce_item(); // генерация новой записи 
 		if (buffer.size() >= N) sleep(); // если буфер полон, заблокироваться 
 		insert_item(item); // помещение записи в буфер 
@@ -62,10 +74,12 @@ void consumer()
 {
 	int item;
 	while (true) { // бесконечное повторение 
+		checkNotEqual();
 		if (buffer.size() == 0) sleep(); // если буфер пуст, заблокироваться 
 		item = remove_item(); // извлечь запись из буфера 
 		if (buffer.size() == N - 1) wakeup(); // был ли буфер полон? 
 		consume_item(item); // распечатка записи 
+
 	}
 }
 
@@ -77,6 +91,14 @@ bool checkDeadLock() {
 	if (previos == currentValue) {
 		std::cout << "deadLock\n";
 		return true;
+	}
+	return false;
+}
+
+bool checkLoseItem2(){
+	if (preErrors != errors) {
+		std::cout << "Errors " << errors << std::endl;
+		preErrors = errors;
 	}
 	return false;
 }
@@ -117,13 +139,13 @@ bool checkLoseItem() {
 void test() {
 	do {
 
-	} while (!checkDeadLock() && !checkLoseItem());
+	} while (!checkDeadLock() && !checkLoseItem2());
 }
 
 int main() {
 	std::thread producerThread(producer);
 	std::thread consumerThread(consumer);
-	std::thread producerThread2(producer);
+	//std::thread producerThread2(producer);
 	//std::thread consumerThread2(consumer);
 
 	test();
