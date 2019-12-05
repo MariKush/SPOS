@@ -2,6 +2,8 @@
 #include <thread>;
 #include <queue>; 
 #include <chrono>;
+#include <mutex>
+#include <condition_variable>
 #include "ThreadSafeQueue.h"
 
 #define N 5 /* количество мест для записей в буфере */
@@ -9,7 +11,9 @@ ThreadSafeQueue<int> buffer;
 ThreadSafeQueue<int> check;
 
 
-volatile bool isSleeping=false;
+
+std::mutex m;
+std::condition_variable cv;
 
 int currentValue = 0;
 
@@ -32,14 +36,12 @@ void consume_item(int item) {
 }
 
 void sleep() {
-	isSleeping = true;
-	while (isSleeping) {
-		std::this_thread::yield();
-	}
+	std::unique_lock<std::mutex> lk(m);
+	cv.wait(lk);
 }
 
 void wakeup() {
-	isSleeping = false;
+	cv.notify_all();
 }
 
 
@@ -105,7 +107,7 @@ bool checkLoseItem() {
 			wasLoss = false;
 		}
 		else {
-			std::cout << "repetition item does not close";
+			std::cout << "double item "<<item<<" does not close\n";
 			return true;
 		}
 	}
@@ -118,19 +120,12 @@ void test() {
 	} while (!checkDeadLock() && !checkLoseItem());
 }
 
-void restart() {
-	isSleeping = false;
-	currentValue = 0;
-	check.clear();
-	buffer.clear();
-}
-
 int main() {
 	std::thread producerThread(producer);
 	std::thread consumerThread(consumer);
 	std::thread producerThread2(producer);
+	//std::thread consumerThread2(consumer);
 
 	test();
-	
 	exit(0);
 }
